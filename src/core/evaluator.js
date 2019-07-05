@@ -1311,7 +1311,7 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
       var skipEmptyXObjs = Object.create(null);
 
       // var preprocessor = new EvaluatorPreprocessor(stream, xref, stateManager);
-      var preprocessor = new CustomEvaluatorPreprocessor(stream, xref, stateManager, resources);
+      var preprocessor = new CustomEvaluatorPreprocessor(stream, xref, stateManager, resources, this.pdfFunctionFactory);
 
       var textState;
 
@@ -3078,45 +3078,54 @@ var EvaluatorPreprocessor = (function EvaluatorPreprocessorClosure() {
 })();
 
 var CustomEvaluatorPreprocessor = (function EvaluatorPreprocessorClosure() {
-  function CustomEvaluatorPreprocessor(stream, xref, stateManager, resources) {
-    EvaluatorPreprocessor.call(this, stream, xref, stateManager);
-    this.resources = resources;
-    this.xref = xref;
+  function CustomEvaluatorPreprocessor(stream, xref, stateManager, resources, pdfFunctionFactory) {
+    try {
+      EvaluatorPreprocessor.call(this, stream, xref, stateManager);
+      this.resources = resources;
+      this.xref = xref;
+      this.pdfFunctionFactory = pdfFunctionFactory;
 
-    // set initial color state
-    var state = this.stateManager.state;
-    state.textRenderingMode = TextRenderingMode.FILL;
-    state.fillColorSpace = ColorSpace.singletons.gray;
-    state.fillColor = [0, 0, 0];
+      // set initial color state
+      var state = this.stateManager.state;
+      state.textRenderingMode = TextRenderingMode.FILL;
+      state.fillColorSpace = ColorSpace.singletons.gray;
+      state.fillColor = [0, 0, 0];
+    } catch (e) {
+      return new EvaluatorPreprocessor(stream, xref, stateManager);
+    }
   }
 
   CustomEvaluatorPreprocessor.prototype = Object.create(EvaluatorPreprocessor.prototype);
 
   CustomEvaluatorPreprocessor.prototype.preprocessCommand = function(fn, args) {
-    EvaluatorPreprocessor.prototype.preprocessCommand.call(this, fn, args);
-    var state = this.stateManager.state;
-    switch (fn) {
-      case OPS.setFillColorSpace:
-        state.fillColorSpace = ColorSpace.parse(args[0], this.xref, this.resources);
-        break;
-      case OPS.setFillColor:
-        var cs = state.fillColorSpace;
-        state.fillColor = cs.getRgb(args, 0);
-        break;
-      case OPS.setFillGray:
-        state.fillColorSpace = ColorSpace.singletons.gray;
-        state.fillColor = ColorSpace.singletons.gray.getRgb(args, 0);
-        break;
-      case OPS.setFillCMYKColor:
-        state.fillColorSpace = ColorSpace.singletons.cmyk;
-        state.fillColor = ColorSpace.singletons.cmyk.getRgb(args, 0);
-        break;
-      case OPS.setFillRGBColor:
-        state.fillColorSpace = ColorSpace.singletons.rgb;
-        state.fillColor = ColorSpace.singletons.rgb.getRgb(args, 0);
-        break;
+    try {
+      EvaluatorPreprocessor.prototype.preprocessCommand.call(this, fn, args);
+      var state = this.stateManager.state;
+      switch (fn) {
+        case OPS.setFillColorSpace:
+          state.fillColorSpace = ColorSpace.parse(args[0], this.xref, this.resources, this.pdfFunctionFactory);
+          break;
+        case OPS.setFillColor:
+          var cs = state.fillColorSpace;
+          state.fillColor = cs.getRgb(args, 0);
+          break;
+        case OPS.setFillGray:
+          state.fillColorSpace = ColorSpace.singletons.gray;
+          state.fillColor = ColorSpace.singletons.gray.getRgb(args, 0);
+          break;
+        case OPS.setFillCMYKColor:
+          state.fillColorSpace = ColorSpace.singletons.cmyk;
+          state.fillColor = ColorSpace.singletons.cmyk.getRgb(args, 0);
+          break;
+        case OPS.setFillRGBColor:
+          state.fillColorSpace = ColorSpace.singletons.rgb;
+          state.fillColor = ColorSpace.singletons.rgb.getRgb(args, 0);
+          break;
+      }
+    } catch (e) {
+      warn('CustomEvaluator error: ' + e);
     }
-  };
+  }
 
   return CustomEvaluatorPreprocessor;
 })();

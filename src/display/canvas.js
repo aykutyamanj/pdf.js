@@ -1944,9 +1944,22 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
       ctx.drawImage(domImage, 0, 0, domImage.width, domImage.height,
                     0, -h, w, h);
+
+      var currentTransform = ctx.mozCurrentTransformInverse;
+      var position = this.getCanvasPosition(0, 0);
+
+      if ('JotformCanvasMiddleWare' in ctx) {
+        ctx.JotformCanvasMiddleWare.process('image', {
+          objId,
+          domImage,
+          left: position[0],
+          top: position[1],
+          width: w / currentTransform[0],
+          height: h / currentTransform[3],
+        });
+      }
+
       if (this.imageLayer) {
-        var currentTransform = ctx.mozCurrentTransformInverse;
-        var position = this.getCanvasPosition(0, 0);
         this.imageLayer.appendImage({
           objId,
           left: position[0],
@@ -2154,8 +2167,19 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       ctx.drawImage(imgToPaint, 0, 0, paintWidth, paintHeight,
                                 0, -height, width, height);
 
-      if (this.imageLayer) {
         var position = this.getCanvasPosition(0, -height);
+
+        if ('JotformCanvasMiddleWare' in ctx) {
+          ctx.JotformCanvasMiddleWare.process('image', {
+            image: imgData,
+            left: position[0],
+            top: position[1],
+            width: width / currentTransform[0],
+            height: height / currentTransform[3],
+          });
+        }
+
+      if (this.imageLayer) {
         this.imageLayer.appendImage({
           imgData,
           left: position[0],

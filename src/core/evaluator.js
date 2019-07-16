@@ -1331,6 +1331,15 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
         }
         textContentItem.fontName = font.loadedName;
 
+        // JotForm
+        // We pass some font info for text chunk with getTextContent(), in order to find bold, italic text etc.
+        textContentItem.font = {
+          name: font.name,
+          fallbackName: font.fallbackName,
+          bold: font.bold,
+          black: font.black,
+        }
+
         // 9.4.4 Text Space Details
         var tsm = [textState.fontSize * textState.textHScale, 0,
           0, textState.fontSize,
@@ -1413,6 +1422,7 @@ var PartialEvaluator = (function PartialEvaluatorClosure() {
           transform: textChunk.transform,
           fontName: textChunk.fontName,
           color: stateManager.state.fillColor,
+          font: textChunk.font, // JotForm
         };
       }
 

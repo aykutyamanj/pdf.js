@@ -1950,8 +1950,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
       if ('JotformCanvasMiddleWare' in ctx) {
         ctx.JotformCanvasMiddleWare.process('image', {
-          objId,
-          domImage,
+          image: domImage,
           left: position[0],
           top: position[1],
           width: w / currentTransform[0],
@@ -2171,7 +2170,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
 
         if ('JotformCanvasMiddleWare' in ctx) {
           ctx.JotformCanvasMiddleWare.process('image', {
-            image: imgData,
+            image: imgToPaint,
             left: position[0],
             top: position[1],
             width: width / currentTransform[0],

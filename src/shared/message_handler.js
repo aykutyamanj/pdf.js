@@ -52,16 +52,12 @@ function makeReasonSerializable(reason) {
   return new UnknownErrorException(reason.message, reason.toString());
 }
 
-function resolveOrReject(capability, success, reason) {
-  if (success) {
+function resolveOrReject(capability, data) {
+  if (data.success) {
     capability.resolve();
   } else {
-    capability.reject(reason);
+    capability.reject(wrapReason(data.reason));
   }
-}
-
-function finalize(promise) {
-  return Promise.resolve(promise).catch(() => {});
 }
 
 function MessageHandler(sourceName, targetName, comObj) {
@@ -326,14 +322,14 @@ MessageHandler.prototype = {
     };
 
     let deleteStreamController = () => {
-      // Delete streamController only when start, pull and
-      // cancel callbacks are resolved, to avoid "TypeError".
+      // Delete the `streamController` only when the start, pull, and cancel
+      // capabilities have settled, to prevent `TypeError`s.
       Promise.all([
         this.streamControllers[data.streamId].startCall,
         this.streamControllers[data.streamId].pullCall,
         this.streamControllers[data.streamId].cancelCall
       ].map(function(capability) {
-        return capability && finalize(capability.promise);
+        return capability && capability.promise.catch(function() { });
       })).then(() => {
         delete this.streamControllers[data.streamId];
       });
@@ -341,12 +337,10 @@ MessageHandler.prototype = {
 
     switch (data.stream) {
       case 'start_complete':
-        resolveOrReject(this.streamControllers[data.streamId].startCall,
-                        data.success, wrapReason(data.reason));
+        resolveOrReject(this.streamControllers[data.streamId].startCall, data);
         break;
       case 'pull_complete':
-        resolveOrReject(this.streamControllers[data.streamId].pullCall,
-                        data.success, wrapReason(data.reason));
+        resolveOrReject(this.streamControllers[data.streamId].pullCall, data);
         break;
       case 'pull':
         // Ignore any pull after close is called.
@@ -395,8 +389,7 @@ MessageHandler.prototype = {
         deleteStreamController();
         break;
       case 'cancel_complete':
-        resolveOrReject(this.streamControllers[data.streamId].cancelCall,
-                        data.success, wrapReason(data.reason));
+        resolveOrReject(this.streamControllers[data.streamId].cancelCall, data);
         deleteStreamController();
         break;
       case 'cancel':

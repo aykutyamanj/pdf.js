@@ -413,9 +413,7 @@ describe('api', function() {
       expect(doc.numPages).toEqual(3);
     });
     it('gets fingerprint', function() {
-      var fingerprint = doc.fingerprint;
-      expect(typeof fingerprint).toEqual('string');
-      expect(fingerprint.length > 0).toEqual(true);
+      expect(doc.fingerprint).toEqual('ea8b35919d6279a369e835bde778611b');
     });
     it('gets page', function(done) {
       var promise = doc.getPage(1);
@@ -934,22 +932,21 @@ describe('api', function() {
     });
 
     it('checks that fingerprints are unique', function(done) {
-      var loadingTask1 = getDocument(buildGetDocumentParams('issue4436r.pdf'));
+      const loadingTask1 = getDocument(
+        buildGetDocumentParams('issue4436r.pdf'));
+      const loadingTask2 = getDocument(buildGetDocumentParams('issue4575.pdf'));
 
-      var loadingTask2 = getDocument(buildGetDocumentParams('issue4575.pdf'));
-
-      var promises = [loadingTask1.promise,
-                      loadingTask2.promise];
-      Promise.all(promises).then(function (data) {
-        var fingerprint1 = data[0].fingerprint;
-        expect(typeof fingerprint1).toEqual('string');
-        expect(fingerprint1.length > 0).toEqual(true);
-
-        var fingerprint2 = data[1].fingerprint;
-        expect(typeof fingerprint2).toEqual('string');
-        expect(fingerprint2.length > 0).toEqual(true);
+      Promise.all([
+        loadingTask1.promise,
+        loadingTask2.promise
+      ]).then(function(data) {
+        const fingerprint1 = data[0].fingerprint;
+        const fingerprint2 = data[1].fingerprint;
 
         expect(fingerprint1).not.toEqual(fingerprint2);
+
+        expect(fingerprint1).toEqual('2f695a83d6e7553c24fc08b7ac69712d');
+        expect(fingerprint2).toEqual('04c7126b34a46b6d4d6e7a1eff7edcb6');
 
         Promise.all([
           loadingTask1.destroy(),
@@ -1236,6 +1233,7 @@ describe('api', function() {
         done();
       }).catch(done.fail);
     });
+
     it('gets operatorList with JPEG image (issue 4888)', function(done) {
       let loadingTask = getDocument(buildGetDocumentParams('cmykjpeg.pdf'));
 
@@ -1254,6 +1252,43 @@ describe('api', function() {
         });
       }).catch(done.fail);
     });
+
+    it('gets operatorList, from corrupt PDF file (issue 8702), ' +
+       'with/without `stopAtErrors` set', function(done) {
+      const loadingTask1 = getDocument(buildGetDocumentParams('issue8702.pdf', {
+        stopAtErrors: false, // The default value.
+      }));
+      const loadingTask2 = getDocument(buildGetDocumentParams('issue8702.pdf', {
+        stopAtErrors: true,
+      }));
+
+      const result1 = loadingTask1.promise.then((pdfDoc) => {
+        return pdfDoc.getPage(1).then((pdfPage) => {
+          return pdfPage.getOperatorList().then((opList) => {
+            expect(opList.fnArray.length).toEqual(722);
+            expect(opList.argsArray.length).toEqual(722);
+            expect(opList.lastChunk).toEqual(true);
+
+            return loadingTask1.destroy();
+          });
+        });
+      });
+
+      const result2 = loadingTask2.promise.then((pdfDoc) => {
+        return pdfDoc.getPage(1).then((pdfPage) => {
+          return pdfPage.getOperatorList().then((opList) => {
+            expect(opList.fnArray.length).toEqual(0);
+            expect(opList.argsArray.length).toEqual(0);
+            expect(opList.lastChunk).toEqual(true);
+
+            return loadingTask2.destroy();
+          });
+        });
+      });
+
+      Promise.all([result1, result2]).then(done, done.fail);
+    });
+
     it('gets document stats after parsing page', function(done) {
       var promise = page.getOperatorList().then(function () {
         return pdfDocument.getStats();
@@ -1296,7 +1331,7 @@ describe('api', function() {
 
         let [statEntry] = stats.times;
         expect(statEntry.name).toEqual('Page Request');
-        expect(statEntry.end - statEntry.start).toBeGreaterThan(0);
+        expect(statEntry.end - statEntry.start).toBeGreaterThanOrEqual(0);
 
         loadingTask.destroy().then(done);
       }, done.fail);

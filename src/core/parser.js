@@ -67,7 +67,7 @@ class Parser {
   }
 
   shift() {
-    if (isCmd(this.buf2, 'ID')) {
+    if ((this.buf2 instanceof Cmd) && this.buf2.cmd === 'ID') {
       this.buf1 = this.buf2;
       this.buf2 = null;
     } else {
@@ -696,7 +696,7 @@ class Parser {
         return new CCITTFaxStream(stream, maybeLength, params);
       }
       if (name === 'RunLengthDecode' || name === 'RL') {
-        xrefStreamStats[StreamType.RL] = true;
+        xrefStreamStats[StreamType.RLX] = true;
         return new RunLengthStream(stream, maybeLength);
       }
       if (name === 'JBIG2Decode') {

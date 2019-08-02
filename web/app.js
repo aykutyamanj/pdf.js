@@ -352,7 +352,9 @@ let PDFViewerApplication = {
     });
     pdfLinkService.setHistory(this.pdfHistory);
 
-    this.findBar = new PDFFindBar(appConfig.findBar, eventBus, this.l10n);
+    if (!this.supportsIntegratedFind) {
+      this.findBar = new PDFFindBar(appConfig.findBar, eventBus, this.l10n);
+    }
 
     this.pdfDocumentProperties =
       new PDFDocumentProperties(appConfig.documentProperties,
@@ -412,6 +414,9 @@ let PDFViewerApplication = {
   },
 
   zoomIn(ticks) {
+    if (this.pdfViewer.isInPresentationMode) {
+      return;
+    }
     let newScale = this.pdfViewer.currentScale;
     do {
       newScale = (newScale * DEFAULT_SCALE_DELTA).toFixed(2);
@@ -422,6 +427,9 @@ let PDFViewerApplication = {
   },
 
   zoomOut(ticks) {
+    if (this.pdfViewer.isInPresentationMode) {
+      return;
+    }
     let newScale = this.pdfViewer.currentScale;
     do {
       newScale = (newScale / DEFAULT_SCALE_DELTA).toFixed(2);
@@ -431,13 +439,8 @@ let PDFViewerApplication = {
     this.pdfViewer.currentScaleValue = newScale;
   },
 
-  zoomReset(ignoreDuplicate = false) {
+  zoomReset() {
     if (this.pdfViewer.isInPresentationMode) {
-      return;
-    } else if (ignoreDuplicate &&
-               this.pdfViewer.currentScaleValue === DEFAULT_SCALE_VALUE) {
-      // Avoid attempting to needlessly reset the zoom level *twice* in a row,
-      // when using the `Ctrl + 0` keyboard shortcut in `MOZCENTRAL` builds.
       return;
     }
     this.pdfViewer.currentScaleValue = DEFAULT_SCALE_VALUE;
@@ -511,11 +514,7 @@ let PDFViewerApplication = {
     }
     this.externalServices.initPassiveLoading({
       onOpenWithTransport(url, length, transport) {
-        PDFViewerApplication.open(url, { range: transport, });
-
-        if (length) {
-          PDFViewerApplication.pdfDocumentProperties.setFileSize(length);
-        }
+        PDFViewerApplication.open(url, { length, range: transport, });
       },
       onOpenWithData(data) {
         PDFViewerApplication.open(data);
@@ -601,7 +600,9 @@ let PDFViewerApplication = {
     this.pdfOutlineViewer.reset();
     this.pdfAttachmentViewer.reset();
 
-    this.findBar.reset();
+    if (this.findBar) {
+      this.findBar.reset();
+    }
     this.toolbar.reset();
     this.secondaryToolbar.reset();
 
@@ -641,24 +642,30 @@ let PDFViewerApplication = {
       this.setTitleUsingUrl(file.originalUrl);
       parameters.url = file.url;
     }
-    if (typeof PDFJSDev === 'undefined' || !PDFJSDev.test('PRODUCTION')) {
-      parameters.docBaseUrl = document.URL.split('#')[0];
-    } else if (typeof PDFJSDev !== 'undefined' &&
-               PDFJSDev.test('FIREFOX || MOZCENTRAL || CHROME')) {
-      parameters.docBaseUrl = this.baseUrl;
-    }
     // Set the necessary API parameters, using the available options.
     const apiParameters = AppOptions.getAll(OptionKind.API);
     for (let key in apiParameters) {
-      parameters[key] = apiParameters[key];
+      let value = apiParameters[key];
+
+      if (key === 'docBaseUrl' && !value) {
+        if (typeof PDFJSDev === 'undefined' || !PDFJSDev.test('PRODUCTION')) {
+          value = document.URL.split('#')[0];
+        } else if (typeof PDFJSDev !== 'undefined' &&
+                   PDFJSDev.test('FIREFOX || MOZCENTRAL || CHROME')) {
+          value = this.baseUrl;
+        }
+      }
+      parameters[key] = value;
     }
 
     if (args) {
-      for (let prop in args) {
-        if (prop === 'length') {
-          this.pdfDocumentProperties.setFileSize(args[prop]);
+      for (let key in args) {
+        const value = args[key];
+
+        if (key === 'length') {
+          this.pdfDocumentProperties.setFileSize(value);
         }
-        parameters[prop] = args[prop];
+        parameters[key] = value;
       }
     }
 
@@ -1134,8 +1141,10 @@ let PDFViewerApplication = {
 
       if (typeof PDFJSDev !== 'undefined' &&
           PDFJSDev.test('FIREFOX || MOZCENTRAL')) {
-        let versionId = String(info.PDFFormatVersion).slice(-1) | 0;
-        let generatorId = 0;
+        // Telemetry labels must be C++ variable friendly.
+        const versionId = `v${info.PDFFormatVersion.replace('.', '_')}`;
+        let generatorId = 'other';
+        // Keep these in sync with mozilla central's Histograms.json.
         const KNOWN_GENERATORS = [
           'acrobat distiller', 'acrobat pdfwriter', 'adobe livecycle',
           'adobe pdf library', 'adobe photoshop', 'ghostscript', 'tcpdf',
@@ -1148,7 +1157,7 @@ let PDFViewerApplication = {
             if (!generator.includes(s)) {
               return false;
             }
-            generatorId = i + 1;
+            generatorId = s.replace(/[ .\-]/g, '_');
             return true;
           }.bind(null, info.Producer.toLowerCase()));
         }
@@ -1959,8 +1968,8 @@ function webViewerZoomIn() {
 function webViewerZoomOut() {
   PDFViewerApplication.zoomOut();
 }
-function webViewerZoomReset(evt) {
-  PDFViewerApplication.zoomReset(evt && evt.ignoreDuplicate);
+function webViewerZoomReset() {
+  PDFViewerApplication.zoomReset();
 }
 function webViewerPageNumberChanged(evt) {
   let pdfViewer = PDFViewerApplication.pdfViewer;
@@ -2090,17 +2099,15 @@ function setZoomDisabledTimeout() {
 }
 
 function webViewerWheel(evt) {
-  let pdfViewer = PDFViewerApplication.pdfViewer;
+  const { pdfViewer, supportedMouseWheelZoomModifierKeys, } =
+    PDFViewerApplication;
+
   if (pdfViewer.isInPresentationMode) {
     return;
   }
 
-  if (evt.ctrlKey || evt.metaKey) {
-    let support = PDFViewerApplication.supportedMouseWheelZoomModifierKeys;
-    if ((evt.ctrlKey && !support.ctrlKey) ||
-        (evt.metaKey && !support.metaKey)) {
-      return;
-    }
+  if ((evt.ctrlKey && supportedMouseWheelZoomModifierKeys.ctrlKey) ||
+      (evt.metaKey && supportedMouseWheelZoomModifierKeys.metaKey)) {
     // Only zoom the pages, not the entire viewer.
     evt.preventDefault();
     // NOTE: this check must be placed *after* preventDefault.

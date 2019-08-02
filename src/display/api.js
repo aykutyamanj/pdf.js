@@ -16,10 +16,11 @@
 /* eslint no-var: error */
 
 import {
-  assert, createPromiseCapability, getVerbosityLevel, info, InvalidPDFException,
-  isArrayBuffer, isSameOrigin, MissingPDFException, NativeImageDecoding,
-  PasswordException, setVerbosityLevel, shadow, stringToBytes,
-  UnexpectedResponseException, UnknownErrorException, unreachable, URL, warn
+  AbortException, assert, createPromiseCapability, getVerbosityLevel, info,
+  InvalidPDFException, isArrayBuffer, isSameOrigin, MissingPDFException,
+  NativeImageDecoding, PasswordException, setVerbosityLevel, shadow,
+  stringToBytes, UnexpectedResponseException, UnknownErrorException,
+  unreachable, URL, warn
 } from '../shared/util';
 import {
   deprecated, DOMCanvasFactory, DOMCMapReaderFactory, DummyStatTimer,
@@ -1023,7 +1024,6 @@ class PDFPageProxy {
     // If there's no displayReadyCapability yet, then the operatorList
     // was never requested before. Make the request and create the promise.
     if (!intentState.displayReadyCapability) {
-      intentState.receivingOperatorList = true;
       intentState.displayReadyCapability = createPromiseCapability();
       intentState.operatorList = {
         fnArray: [],
@@ -1125,7 +1125,6 @@ class PDFPageProxy {
     if (!intentState.opListReadCapability) {
       opListTask = {};
       opListTask.operatorListChanged = operatorListChanged;
-      intentState.receivingOperatorList = true;
       intentState.opListReadCapability = createPromiseCapability();
       intentState.renderTasks = [];
       intentState.renderTasks.push(opListTask);
@@ -1241,7 +1240,7 @@ class PDFPageProxy {
         Object.keys(this.intentStates).some(function(intent) {
           const intentState = this.intentStates[intent];
           return (intentState.renderTasks.length !== 0 ||
-                  intentState.receivingOperatorList);
+                  !intentState.operatorList.lastChunk);
         }, this)) {
       return;
     }
@@ -1290,7 +1289,6 @@ class PDFPageProxy {
     }
 
     if (operatorListChunk.lastChunk) {
-      intentState.receivingOperatorList = false;
       this._tryCleanup();
     }
   }
@@ -1771,7 +1769,8 @@ class WorkerTransport {
     Promise.all(waitOn).then(() => {
       this.fontLoader.clear();
       if (this._networkStream) {
-        this._networkStream.cancelAllRequests();
+        this._networkStream.cancelAllRequests(
+          new AbortException('Worker was terminated.'));
       }
 
       if (this.messageHandler) {
@@ -2092,18 +2091,22 @@ class WorkerTransport {
       const page = this.pageCache[data.pageIndex];
       const intentState = page.intentStates[data.intent];
 
-      if (intentState.displayReadyCapability) {
-        intentState.displayReadyCapability.reject(new Error(data.error));
-      } else {
-        throw new Error(data.error);
-      }
-
       if (intentState.operatorList) {
         // Mark operator list as complete.
         intentState.operatorList.lastChunk = true;
+
         for (let i = 0; i < intentState.renderTasks.length; i++) {
           intentState.renderTasks[i].operatorListChanged();
         }
+        page._tryCleanup();
+      }
+
+      if (intentState.displayReadyCapability) {
+        intentState.displayReadyCapability.reject(new Error(data.error));
+      } else if (intentState.opListReadCapability) {
+        intentState.opListReadCapability.reject(new Error(data.error));
+      } else {
+        throw new Error(data.error);
       }
     }, this);
 

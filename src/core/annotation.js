@@ -607,6 +607,31 @@ class WidgetAnnotation extends Annotation {
                           Dict.empty;
 
     data.fieldFlags = getInheritableProperty({ dict, key: 'Ff', });
+    data.annotationActions = getInheritableProperty({
+      dict,
+      key: 'AA',
+    }) || false;
+
+    if (data.annotationActions) {
+      console.log(data.annotationActions);
+      const AADict = new Dict(data.annotationActions.xref);
+      console.log(AADict);
+      const AAFDict = getInheritableProperty({
+        dict: data.annotationActions,
+        key: 'F',
+      });
+
+      if (AAFDict) {
+        data.annotationActions = getInheritableProperty({
+          dict: AAFDict,
+          key: 'JS',
+        }) || false;
+      } else {
+        data.annotationActions = false;
+      }
+      console.log(data.annotationActions);
+    }
+
     if (!Number.isInteger(data.fieldFlags) || data.fieldFlags < 0) {
       data.fieldFlags = 0;
     }

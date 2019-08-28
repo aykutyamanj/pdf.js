@@ -1103,6 +1103,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
             this.ctx.lineTo(x, yh);
             this.ctx.lineTo(x, y);
             this.ctx.closePath();
+            if ('JotformCanvasMiddleWare' in ctx) {
+              ctx.JotformCanvasMiddleWare.process('rect', [x, y, xw, yh], ctx);
+            }
             break;
           case OPS.moveTo:
             x = args[j++];
@@ -1110,9 +1113,14 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
             ctx.moveTo(x, y);
             break;
           case OPS.lineTo:
+            const startx = x, starty = y;
             x = args[j++];
             y = args[j++];
             ctx.lineTo(x, y);
+            if ('JotformCanvasMiddleWare' in ctx) {
+              const line = [startx, starty, x, y];
+              ctx.JotformCanvasMiddleWare.process('line', line, ctx);
+            }
             break;
           case OPS.curveTo:
             x = args[j + 4];
@@ -1955,7 +1963,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
           top: position[1],
           width: w / currentTransform[0],
           height: h / currentTransform[3],
-        });
+        }, ctx);
       }
 
       if (this.imageLayer) {
@@ -2175,7 +2183,7 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
             top: position[1],
             width: width / currentTransform[0],
             height: height / currentTransform[3],
-          });
+          }, ctx);
         }
 
       if (this.imageLayer) {

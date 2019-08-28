@@ -33,10 +33,11 @@ NodeCanvasFactory.prototype = {
   },
 };
 
-var pdfjsLib = require('pdfjs-dist');
+var pdfjsLib = require('../../build/generic/build/pdf');
 
 // Relative path of the PDF file.
-var pdfURL = '/Users/iko/Documents/Code/pdf-importer/server/__tests__/samples/with-images.pdf';
+// var pdfURL = '/Users/iko/Documents/Code/pdf-importer/server/__tests__/samples/good/003.pdf';
+var pdfURL = '/Users/iko/Documents/Code/pdf-importer/server/__tests__/samples/good/020.pdf';
 
 // Read the PDF file into a typed array so PDF.js can load it.
 var rawData = new Uint8Array(fs.readFileSync(pdfURL));
@@ -59,7 +60,12 @@ pdfjsLib.getDocument(rawData).then(function (pdfDocument) {
     };
 
     page.render(renderContext).then(function () {
-      console.log(canvasAndContext.context.JotformCanvasMiddleWare.images);
+      console.log('RENDERED');
+      console.log(canvasAndContext.context.JotformCanvasMiddleWare);
+      const fs = require('fs')
+      const out = fs.createWriteStream(__dirname + '/test.png')
+      const stream = canvasAndContext.canvas.createPNGStream()
+      stream.pipe(out);
     });
   });
 }).catch(function (reason) {

@@ -608,8 +608,6 @@ class WidgetAnnotation extends Annotation {
 
     data.fieldFlags = getInheritableProperty({ dict, key: 'Ff', });
     data.annotationActions = this.getParsedAnnotationActions(dict);
-    console.log(data.annotationActions);
-
     if (!Number.isInteger(data.fieldFlags) || data.fieldFlags < 0) {
       data.fieldFlags = 0;
     }

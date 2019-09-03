@@ -1173,6 +1173,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
       } else {
         ctx.stroke();
       }
+      if ('JotformCanvasMiddleWare' in ctx) {
+        ctx.JotformCanvasMiddleWare.process('stroke', strokeColor);
+      }
       if (consumePath) {
         this.consumePath();
       }
@@ -1204,6 +1207,9 @@ var CanvasGraphics = (function CanvasGraphicsClosure() {
         this.pendingEOFill = false;
       } else {
         ctx.fill();
+      }
+      if ('JotformCanvasMiddleWare' in ctx) {
+        ctx.JotformCanvasMiddleWare.process('fill', fillColor);
       }
 
       if (needRestore) {

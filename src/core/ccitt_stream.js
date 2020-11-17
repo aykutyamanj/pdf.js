@@ -12,14 +12,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* eslint-disable no-var */
 
-import { Dict, isDict } from "./primitives.js";
-import { CCITTFaxDecoder } from "./ccitt.js";
-import { DecodeStream } from "./stream.js";
+import { Dict, isDict } from './primitives';
+import { CCITTFaxDecoder } from './ccitt';
+import { DecodeStream } from './stream';
 
 var CCITTFaxStream = (function CCITTFaxStreamClosure() {
-  // eslint-disable-next-line no-shadow
   function CCITTFaxStream(str, maybeLength, params) {
     this.str = str;
     this.dict = str.dict;
@@ -34,13 +32,13 @@ var CCITTFaxStream = (function CCITTFaxStreamClosure() {
       },
     };
     this.ccittFaxDecoder = new CCITTFaxDecoder(source, {
-      K: params.get("K"),
-      EndOfLine: params.get("EndOfLine"),
-      EncodedByteAlign: params.get("EncodedByteAlign"),
-      Columns: params.get("Columns"),
-      Rows: params.get("Rows"),
-      EndOfBlock: params.get("EndOfBlock"),
-      BlackIs1: params.get("BlackIs1"),
+      K: params.get('K'),
+      EndOfLine: params.get('EndOfLine'),
+      EncodedByteAlign: params.get('EncodedByteAlign'),
+      Columns: params.get('Columns'),
+      Rows: params.get('Rows'),
+      EndOfBlock: params.get('EndOfBlock'),
+      BlackIs1: params.get('BlackIs1'),
     });
 
     DecodeStream.call(this, maybeLength);
@@ -48,9 +46,9 @@ var CCITTFaxStream = (function CCITTFaxStreamClosure() {
 
   CCITTFaxStream.prototype = Object.create(DecodeStream.prototype);
 
-  CCITTFaxStream.prototype.readBlock = function () {
+  CCITTFaxStream.prototype.readBlock = function() {
     while (!this.eof) {
-      const c = this.ccittFaxDecoder.readNextChar();
+      let c = this.ccittFaxDecoder.readNextChar();
       if (c === -1) {
         this.eof = true;
         return;
@@ -63,4 +61,6 @@ var CCITTFaxStream = (function CCITTFaxStreamClosure() {
   return CCITTFaxStream;
 })();
 
-export { CCITTFaxStream };
+export {
+  CCITTFaxStream,
+};

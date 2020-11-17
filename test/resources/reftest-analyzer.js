@@ -285,13 +285,13 @@ window.onload = function() {
     var img = new Image();
     img.onload = function() {
       var canvas = document.createElement("canvas");
-      canvas.width = img.naturalWidth;
-      canvas.height = img.naturalHeight;
+      canvas.width = 800;
+      canvas.height = 1000;
 
       var ctx = canvas.getContext("2d");
       ctx.drawImage(img, 0, 0);
 
-      whenReady(ctx.getImageData(0, 0, img.naturalWidth, img.naturalHeight));
+      whenReady(ctx.getImageData(0, 0, 800, 1000));
     };
     img.src = gPath + src;
   }
@@ -323,17 +323,11 @@ window.onload = function() {
     }
     cell.style.display = "";
     getImageData(item.images[0], function(data) {
-      gImage1Data = data;
-      syncSVGSize(gImage1Data);
+      gImage1Data = data
     });
     getImageData(item.images[1], function(data) {
       gImage2Data = data
     });
-  }
-
-  function syncSVGSize(imageData) {
-    ID("svg").setAttribute("width", imageData.width);
-    ID("svg").setAttribute("height", imageData.height);
   }
 
   function showImage(i) {
@@ -403,7 +397,7 @@ window.onload = function() {
         var py = y + j;
         var p1 = gMagPixPaths[i + dx_hi][j + dy_hi][0];
         var p2 = gMagPixPaths[i + dx_hi][j + dy_hi][1];
-        if (px < 0 || py < 0 || px >= gImage1Data.width || py >= gImage1Data.height) {
+        if (px < 0 || py < 0 || px >= 800 || py >= 1000) {
           p1.setAttribute("fill", "#aaa");
           p2.setAttribute("fill", "#888");
         } else {

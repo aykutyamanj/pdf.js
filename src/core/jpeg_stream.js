@@ -13,24 +13,25 @@
  * limitations under the License.
  */
 
-import { DecodeStream } from "./stream.js";
-import { isDict } from "./primitives.js";
-import { JpegImage } from "./jpg.js";
-import { shadow } from "../shared/util.js";
+import { createObjectURL, shadow } from '../shared/util';
+import { DecodeStream } from './stream';
+import { isDict } from './primitives';
+import { JpegImage } from './jpg';
 
 /**
- * For JPEG's we use a library to decode these images and the stream behaves
- * like all the other DecodeStreams.
+ * Depending on the type of JPEG a JpegStream is handled in different ways. For
+ * JPEG's that are supported natively such as DeviceGray and DeviceRGB the image
+ * data is stored and then loaded by the browser. For unsupported JPEG's we use
+ * a library to decode these images and the stream behaves like all the other
+ * DecodeStreams.
  */
-const JpegStream = (function JpegStreamClosure() {
-  // eslint-disable-next-line no-shadow
+let JpegStream = (function JpegStreamClosure() {
   function JpegStream(stream, maybeLength, dict, params) {
     // Some images may contain 'junk' before the SOI (start-of-image) marker.
     // Note: this seems to mainly affect inline images.
     let ch;
     while ((ch = stream.getByte()) !== -1) {
-      // Find the first byte of the SOI marker (0xFFD8).
-      if (ch === 0xff) {
+      if (ch === 0xFF) { // Find the first byte of the SOI marker (0xFFD8).
         stream.skip(-1); // Reset the stream position to the SOI.
         break;
       }
@@ -45,36 +46,36 @@ const JpegStream = (function JpegStreamClosure() {
 
   JpegStream.prototype = Object.create(DecodeStream.prototype);
 
-  Object.defineProperty(JpegStream.prototype, "bytes", {
+  Object.defineProperty(JpegStream.prototype, 'bytes', {
     get: function JpegStream_bytes() {
       // If `this.maybeLength` is null, we'll get the entire stream.
-      return shadow(this, "bytes", this.stream.getBytes(this.maybeLength));
+      return shadow(this, 'bytes', this.stream.getBytes(this.maybeLength));
     },
     configurable: true,
   });
 
-  JpegStream.prototype.ensureBuffer = function (requested) {
+  JpegStream.prototype.ensureBuffer = function(requested) {
     // No-op, since `this.readBlock` will always parse the entire image and
     // directly insert all of its data into `this.buffer`.
   };
 
-  JpegStream.prototype.readBlock = function () {
+  JpegStream.prototype.readBlock = function() {
     if (this.eof) {
       return;
     }
-    const jpegOptions = {
+    let jpegOptions = {
       decodeTransform: undefined,
       colorTransform: undefined,
     };
 
     // Checking if values need to be transformed before conversion.
-    const decodeArr = this.dict.getArray("Decode", "D");
+    let decodeArr = this.dict.getArray('Decode', 'D');
     if (this.forceRGB && Array.isArray(decodeArr)) {
-      const bitsPerComponent = this.dict.get("BitsPerComponent") || 8;
-      const decodeArrLength = decodeArr.length;
-      const transform = new Int32Array(decodeArrLength);
+      let bitsPerComponent = this.dict.get('BitsPerComponent') || 8;
+      let decodeArrLength = decodeArr.length;
+      let transform = new Int32Array(decodeArrLength);
       let transformNeeded = false;
-      const maxValue = (1 << bitsPerComponent) - 1;
+      let maxValue = (1 << bitsPerComponent) - 1;
       for (let i = 0; i < decodeArrLength; i += 2) {
         transform[i] = ((decodeArr[i + 1] - decodeArr[i]) * 256) | 0;
         transform[i + 1] = (decodeArr[i] * maxValue) | 0;
@@ -88,7 +89,7 @@ const JpegStream = (function JpegStreamClosure() {
     }
     // Fetching the 'ColorTransform' entry, if it exists.
     if (isDict(this.params)) {
-      const colorTransform = this.params.get("ColorTransform");
+      let colorTransform = this.params.get('ColorTransform');
       if (Number.isInteger(colorTransform)) {
         jpegOptions.colorTransform = colorTransform;
       }
@@ -96,7 +97,7 @@ const JpegStream = (function JpegStreamClosure() {
     const jpegImage = new JpegImage(jpegOptions);
 
     jpegImage.parse(this.bytes);
-    const data = jpegImage.getData({
+    let data = jpegImage.getData({
       width: this.drawWidth,
       height: this.drawHeight,
       forceRGB: this.forceRGB,
@@ -107,7 +108,13 @@ const JpegStream = (function JpegStreamClosure() {
     this.eof = true;
   };
 
+  JpegStream.prototype.getIR = function(forceDataSchema = false) {
+    return createObjectURL(this.bytes, 'image/jpeg', forceDataSchema);
+  };
+
   return JpegStream;
 })();
 
-export { JpegStream };
+export {
+  JpegStream,
+};

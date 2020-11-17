@@ -13,8 +13,8 @@
  * limitations under the License.
  */
 
-import { NullL10n } from "./ui_utils.js";
-import { PasswordResponses } from "pdfjs-lib";
+import { NullL10n } from './ui_utils';
+import { PasswordResponses } from 'pdfjs-lib';
 
 /**
  * @typedef {Object} PasswordPromptOptions
@@ -49,20 +49,16 @@ class PasswordPrompt {
     this.reason = null;
 
     // Attach the event listeners.
-    this.submitButton.addEventListener("click", this.verify.bind(this));
-    this.cancelButton.addEventListener("click", this.close.bind(this));
-    this.input.addEventListener("keydown", e => {
-      if (e.keyCode === /* Enter = */ 13) {
+    this.submitButton.addEventListener('click', this.verify.bind(this));
+    this.cancelButton.addEventListener('click', this.close.bind(this));
+    this.input.addEventListener('keydown', (e) => {
+      if (e.keyCode === 13) { // Enter key
         this.verify();
       }
     });
 
-    this.overlayManager.register(
-      this.overlayName,
-      this.container,
-      this.close.bind(this),
-      true
-    );
+    this.overlayManager.register(this.overlayName, this.container,
+                                 this.close.bind(this), true);
   }
 
   open() {
@@ -71,20 +67,14 @@ class PasswordPrompt {
 
       let promptString;
       if (this.reason === PasswordResponses.INCORRECT_PASSWORD) {
-        promptString = this.l10n.get(
-          "password_invalid",
-          null,
-          "Invalid password. Please try again."
-        );
+        promptString = this.l10n.get('password_invalid', null,
+          'Invalid password. Please try again.');
       } else {
-        promptString = this.l10n.get(
-          "password_label",
-          null,
-          "Enter the password to open this PDF file."
-        );
+        promptString = this.l10n.get('password_label', null,
+          'Enter the password to open this PDF file.');
       }
 
-      promptString.then(msg => {
+      promptString.then((msg) => {
         this.label.textContent = msg;
       });
     });
@@ -92,12 +82,12 @@ class PasswordPrompt {
 
   close() {
     this.overlayManager.close(this.overlayName).then(() => {
-      this.input.value = "";
+      this.input.value = '';
     });
   }
 
   verify() {
-    const password = this.input.value;
+    let password = this.input.value;
     if (password && password.length > 0) {
       this.close();
       this.updateCallback(password);
@@ -110,4 +100,6 @@ class PasswordPrompt {
   }
 }
 
-export { PasswordPrompt };
+export {
+  PasswordPrompt,
+};

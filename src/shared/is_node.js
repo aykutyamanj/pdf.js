@@ -12,16 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-/* globals process */
+/* globals module, process */
 
-// NW.js / Electron is a browser context, but copies some Node.js objects; see
-// http://docs.nwjs.io/en/latest/For%20Users/Advanced/JavaScript%20Contexts%20in%20NW.js/#access-nodejs-and-nwjs-api-in-browser-context
-// https://www.electronjs.org/docs/api/process#processversionselectron-readonly
-// https://www.electronjs.org/docs/api/process#processtype-readonly
-const isNodeJS =
-  typeof process === "object" &&
-  process + "" === "[object process]" &&
-  !process.versions.nw &&
-  !(process.versions.electron && process.type && process.type !== "browser");
-
-export { isNodeJS };
+module.exports = function isNodeJS() {
+  // NW.js / Electron is a browser context, but copies some Node.js objects; see
+  // http://docs.nwjs.io/en/latest/For%20Users/Advanced/JavaScript%20Contexts%20in%20NW.js/#access-nodejs-and-nwjs-api-in-browser-context
+  // https://electronjs.org/docs/api/process#processversionselectron
+  return typeof process === 'object' &&
+         process + '' === '[object process]' &&
+         !process.versions['nw'] && !process.versions['electron'];
+};

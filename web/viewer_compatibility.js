@@ -13,30 +13,12 @@
  * limitations under the License.
  */
 
-const compatibilityParams = Object.create(null);
-if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
+let compatibilityParams = Object.create(null);
+if (typeof PDFJSDev === 'undefined' || PDFJSDev.test('GENERIC')) {
   const userAgent =
-    (typeof navigator !== "undefined" && navigator.userAgent) || "";
-  const platform =
-    (typeof navigator !== "undefined" && navigator.platform) || "";
-  const maxTouchPoints =
-    (typeof navigator !== "undefined" && navigator.maxTouchPoints) || 1;
-
+    (typeof navigator !== 'undefined' && navigator.userAgent) || '';
   const isAndroid = /Android/.test(userAgent);
-  const isIOS =
-    /\b(iPad|iPhone|iPod)(?=;)/.test(userAgent) ||
-    (platform === "MacIntel" && maxTouchPoints > 1);
-  const isIOSChrome = /CriOS/.test(userAgent);
-
-  // Checks if possible to use URL.createObjectURL()
-  // Support: IE, Chrome on iOS
-  (function checkOnBlobSupport() {
-    // Sometimes Chrome on iOS loses data created with createObjectURL(),
-    // see issue #8081.
-    if (isIOSChrome) {
-      compatibilityParams.disableCreateObjectURL = true;
-    }
-  })();
+  const isIOS = /\b(iPad|iPhone|iPod)(?=;)/.test(userAgent);
 
   // Limit canvas size to 5 mega-pixels on mobile.
   // Support: Android, iOS
@@ -46,6 +28,5 @@ if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
     }
   })();
 }
-const viewerCompatibilityParams = Object.freeze(compatibilityParams);
 
-export { viewerCompatibilityParams };
+exports.viewerCompatibilityParams = Object.freeze(compatibilityParams);

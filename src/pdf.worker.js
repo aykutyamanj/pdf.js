@@ -12,12 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+/* eslint-disable no-unused-vars */
 
-import { WorkerMessageHandler } from "./core/worker.js";
+'use strict';
 
-/* eslint-disable-next-line no-unused-vars */
-const pdfjsVersion = PDFJSDev.eval("BUNDLE_VERSION");
-/* eslint-disable-next-line no-unused-vars */
-const pdfjsBuild = PDFJSDev.eval("BUNDLE_BUILD");
+const pdfjsVersion = PDFJSDev.eval('BUNDLE_VERSION');
+const pdfjsBuild = PDFJSDev.eval('BUNDLE_BUILD');
 
-export { WorkerMessageHandler };
+const pdfjsCoreWorker = require('./core/worker.js');
+
+exports.WorkerMessageHandler = pdfjsCoreWorker.WorkerMessageHandler;

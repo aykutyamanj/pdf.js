@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-import { RenderingCancelledException } from "pdfjs-lib";
-
 const CLEANUP_TIMEOUT = 30000;
 
 const RenderingStates = {
@@ -105,14 +103,14 @@ class PDFRenderingQueue {
      * 2. if last scrolled down, the page after the visible pages, or
      *    if last scrolled up, the page before the visible pages
      */
-    const visibleViews = visible.views;
+    let visibleViews = visible.views;
 
-    const numVisible = visibleViews.length;
+    let numVisible = visibleViews.length;
     if (numVisible === 0) {
       return null;
     }
     for (let i = 0; i < numVisible; ++i) {
-      const view = visibleViews[i].view;
+      let view = visibleViews[i].view;
       if (!this.isViewFinished(view)) {
         return view;
       }
@@ -120,17 +118,15 @@ class PDFRenderingQueue {
 
     // All the visible views have rendered; try to render next/previous pages.
     if (scrolledDown) {
-      const nextPageIndex = visible.last.id;
+      let nextPageIndex = visible.last.id;
       // IDs start at 1, so no need to add 1.
       if (views[nextPageIndex] && !this.isViewFinished(views[nextPageIndex])) {
         return views[nextPageIndex];
       }
     } else {
-      const previousPageIndex = visible.first.id - 2;
-      if (
-        views[previousPageIndex] &&
-        !this.isViewFinished(views[previousPageIndex])
-      ) {
+      let previousPageIndex = visible.first.id - 2;
+      if (views[previousPageIndex] &&
+          !this.isViewFinished(views[previousPageIndex])) {
         return views[previousPageIndex];
       }
     }
@@ -166,21 +162,16 @@ class PDFRenderingQueue {
         break;
       case RenderingStates.INITIAL:
         this.highestPriorityPage = view.renderingId;
-        view
-          .draw()
-          .finally(() => {
-            this.renderHighestPriority();
-          })
-          .catch(reason => {
-            if (reason instanceof RenderingCancelledException) {
-              return;
-            }
-            console.error(`renderView: "${reason}"`);
-          });
+        view.draw().finally(() => {
+          this.renderHighestPriority();
+        });
         break;
     }
     return true;
   }
 }
 
-export { RenderingStates, PDFRenderingQueue };
+export {
+  RenderingStates,
+  PDFRenderingQueue,
+};

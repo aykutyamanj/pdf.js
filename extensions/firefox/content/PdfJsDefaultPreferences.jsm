@@ -17,6 +17,5 @@
 
 var EXPORTED_SYMBOLS = ["PdfJsDefaultPreferences"];
 
-var PdfJsDefaultPreferences = Object.freeze(
-  PDFJSDev.json("$ROOT/build/default_preferences.json")
-);
+var PdfJsDefaultPreferences =
+  Object.freeze(PDFJSDev.json("$ROOT/build/default_preferences.json"));

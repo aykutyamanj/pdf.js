@@ -13,7 +13,8 @@
  * limitations under the License.
  */
 
-import { renderTextLayer } from "pdfjs-lib";
+import { getGlobalEventBus } from './ui_utils';
+import { renderTextLayer } from 'pdfjs-lib';
 
 const EXPAND_DIVS_TIMEOUT = 300; // ms
 
@@ -35,16 +36,10 @@ const EXPAND_DIVS_TIMEOUT = 300; // ms
  * also provides a way to highlight text that is being searched for.
  */
 class TextLayerBuilder {
-  constructor({
-    textLayerDiv,
-    eventBus,
-    pageIndex,
-    viewport,
-    findController = null,
-    enhanceTextSelection = false,
-  }) {
+  constructor({ textLayerDiv, eventBus, pageIndex, viewport,
+                findController = null, enhanceTextSelection = false, }) {
     this.textLayerDiv = textLayerDiv;
-    this.eventBus = eventBus;
+    this.eventBus = eventBus || getGlobalEventBus();
     this.textContent = null;
     this.textContentItemsStr = [];
     this.textContentStream = null;
@@ -69,12 +64,12 @@ class TextLayerBuilder {
     this.renderingDone = true;
 
     if (!this.enhanceTextSelection) {
-      const endOfContent = document.createElement("div");
-      endOfContent.className = "endOfContent";
+      let endOfContent = document.createElement('div');
+      endOfContent.className = 'endOfContent';
       this.textLayerDiv.appendChild(endOfContent);
     }
 
-    this.eventBus.dispatch("textlayerrendered", {
+    this.eventBus.dispatch('textlayerrendered', {
       source: this,
       pageNumber: this.pageNumber,
       numTextDivs: this.textDivs.length,
@@ -84,8 +79,8 @@ class TextLayerBuilder {
   /**
    * Renders the text layer.
    *
-   * @param {number} [timeout] - Wait for a specified amount of milliseconds
-   *                             before rendering.
+   * @param {number} timeout - (optional) wait for a specified amount of
+   *                           milliseconds before rendering
    */
   render(timeout = 0) {
     if (!(this.textContent || this.textContentStream) || this.renderingDone) {
@@ -94,7 +89,7 @@ class TextLayerBuilder {
     this.cancel();
 
     this.textDivs = [];
-    const textLayerFrag = document.createDocumentFragment();
+    let textLayerFrag = document.createDocumentFragment();
     this.textLayerRenderTask = renderTextLayer({
       textContent: this.textContent,
       textContentStream: this.textContentStream,
@@ -105,27 +100,22 @@ class TextLayerBuilder {
       timeout,
       enhanceTextSelection: this.enhanceTextSelection,
     });
-    this.textLayerRenderTask.promise.then(
-      () => {
-        this.textLayerDiv.appendChild(textLayerFrag);
-        this._finishRendering();
-        this._updateMatches();
-      },
-      function (reason) {
-        // Cancelled or failed to render text layer; skipping errors.
-      }
-    );
+    this.textLayerRenderTask.promise.then(() => {
+      this.textLayerDiv.appendChild(textLayerFrag);
+      this._finishRendering();
+      this._updateMatches();
+    }, function (reason) {
+      // Cancelled or failed to render text layer; skipping errors.
+    });
 
     if (!this._onUpdateTextLayerMatches) {
-      this._onUpdateTextLayerMatches = evt => {
+      this._onUpdateTextLayerMatches = (evt) => {
         if (evt.pageIndex === this.pageIdx || evt.pageIndex === -1) {
           this._updateMatches();
         }
       };
-      this.eventBus._on(
-        "updatetextlayermatches",
-        this._onUpdateTextLayerMatches
-      );
+      this.eventBus.on('updatetextlayermatches',
+                       this._onUpdateTextLayerMatches);
     }
   }
 
@@ -138,10 +128,8 @@ class TextLayerBuilder {
       this.textLayerRenderTask = null;
     }
     if (this._onUpdateTextLayerMatches) {
-      this.eventBus._off(
-        "updatetextlayermatches",
-        this._onUpdateTextLayerMatches
-      );
+      this.eventBus.off('updatetextlayermatches',
+                        this._onUpdateTextLayerMatches);
       this._onUpdateTextLayerMatches = null;
     }
   }
@@ -161,10 +149,9 @@ class TextLayerBuilder {
     if (!matches) {
       return [];
     }
-    const { findController, textContentItemsStr } = this;
+    const { findController, textContentItemsStr, } = this;
 
-    let i = 0,
-      iIndex = 0;
+    let i = 0, iIndex = 0;
     const end = textContentItemsStr.length - 1;
     const queryLen = findController.state.query.length;
     const result = [];
@@ -174,16 +161,17 @@ class TextLayerBuilder {
       let matchIdx = matches[m];
 
       // Loop over the divIdxs.
-      while (i !== end && matchIdx >= iIndex + textContentItemsStr[i].length) {
+      while (i !== end &&
+             matchIdx >= (iIndex + textContentItemsStr[i].length)) {
         iIndex += textContentItemsStr[i].length;
         i++;
       }
 
       if (i === textContentItemsStr.length) {
-        console.error("Could not find a matching mapping");
+        console.error('Could not find a matching mapping');
       }
 
-      const match = {
+      let match = {
         begin: {
           divIdx: i,
           offset: matchIdx - iIndex,
@@ -191,17 +179,16 @@ class TextLayerBuilder {
       };
 
       // Calculate the end position.
-      if (matchesLength) {
-        // Multiterm search.
+      if (matchesLength) { // Multiterm search.
         matchIdx += matchesLength[m];
-      } else {
-        // Phrase search.
+      } else { // Phrase search.
         matchIdx += queryLen;
       }
 
       // Somewhat the same array as above, but use > instead of >= to get
       // the end position right.
-      while (i !== end && matchIdx > iIndex + textContentItemsStr[i].length) {
+      while (i !== end &&
+             matchIdx > (iIndex + textContentItemsStr[i].length)) {
         iIndex += textContentItemsStr[i].length;
         i++;
       }
@@ -220,32 +207,29 @@ class TextLayerBuilder {
     if (matches.length === 0) {
       return;
     }
-    const { findController, pageIdx, textContentItemsStr, textDivs } = this;
+    const { findController, pageIdx, textContentItemsStr, textDivs, } = this;
 
-    const isSelectedPage = pageIdx === findController.selected.pageIdx;
+    const isSelectedPage = (pageIdx === findController.selected.pageIdx);
     const selectedMatchIdx = findController.selected.matchIdx;
     const highlightAll = findController.state.highlightAll;
     let prevEnd = null;
-    const infinity = {
+    let infinity = {
       divIdx: -1,
       offset: undefined,
     };
 
     function beginText(begin, className) {
-      const divIdx = begin.divIdx;
-      textDivs[divIdx].textContent = "";
+      let divIdx = begin.divIdx;
+      textDivs[divIdx].textContent = '';
       appendTextToDiv(divIdx, 0, begin.offset, className);
     }
 
     function appendTextToDiv(divIdx, fromOffset, toOffset, className) {
-      const div = textDivs[divIdx];
-      const content = textContentItemsStr[divIdx].substring(
-        fromOffset,
-        toOffset
-      );
-      const node = document.createTextNode(content);
+      let div = textDivs[divIdx];
+      let content = textContentItemsStr[divIdx].substring(fromOffset, toOffset);
+      let node = document.createTextNode(content);
       if (className) {
-        const span = document.createElement("span");
+        let span = document.createElement('span');
         span.className = className;
         span.appendChild(node);
         div.appendChild(span);
@@ -254,8 +238,7 @@ class TextLayerBuilder {
       div.appendChild(node);
     }
 
-    let i0 = selectedMatchIdx,
-      i1 = i0 + 1;
+    let i0 = selectedMatchIdx, i1 = i0 + 1;
     if (highlightAll) {
       i0 = 0;
       i1 = matches.length;
@@ -265,14 +248,13 @@ class TextLayerBuilder {
     }
 
     for (let i = i0; i < i1; i++) {
-      const match = matches[i];
-      const begin = match.begin;
-      const end = match.end;
-      const isSelected = isSelectedPage && i === selectedMatchIdx;
-      const highlightSuffix = isSelected ? " selected" : "";
+      let match = matches[i];
+      let begin = match.begin;
+      let end = match.end;
+      const isSelected = (isSelectedPage && i === selectedMatchIdx);
+      const highlightSuffix = (isSelected ? ' selected' : '');
 
-      if (isSelected) {
-        // Attempt to scroll the selected match into view.
+      if (isSelected) { // Attempt to scroll the selected match into view.
         findController.scrollMatchIntoView({
           element: textDivs[begin.divIdx],
           pageIndex: pageIdx,
@@ -293,23 +275,15 @@ class TextLayerBuilder {
       }
 
       if (begin.divIdx === end.divIdx) {
-        appendTextToDiv(
-          begin.divIdx,
-          begin.offset,
-          end.offset,
-          "highlight" + highlightSuffix
-        );
+        appendTextToDiv(begin.divIdx, begin.offset, end.offset,
+                        'highlight' + highlightSuffix);
       } else {
-        appendTextToDiv(
-          begin.divIdx,
-          begin.offset,
-          infinity.offset,
-          "highlight begin" + highlightSuffix
-        );
+        appendTextToDiv(begin.divIdx, begin.offset, infinity.offset,
+                        'highlight begin' + highlightSuffix);
         for (let n0 = begin.divIdx + 1, n1 = end.divIdx; n0 < n1; n0++) {
-          textDivs[n0].className = "highlight middle" + highlightSuffix;
+          textDivs[n0].className = 'highlight middle' + highlightSuffix;
         }
-        beginText(end, "highlight end" + highlightSuffix);
+        beginText(end, 'highlight end' + highlightSuffix);
       }
       prevEnd = end;
     }
@@ -325,22 +299,18 @@ class TextLayerBuilder {
       return;
     }
     const {
-      findController,
-      matches,
-      pageIdx,
-      textContentItemsStr,
-      textDivs,
+      findController, matches, pageIdx, textContentItemsStr, textDivs,
     } = this;
     let clearedUntilDivIdx = -1;
 
     // Clear all current matches.
     for (let i = 0, ii = matches.length; i < ii; i++) {
-      const match = matches[i];
-      const begin = Math.max(clearedUntilDivIdx, match.begin.divIdx);
+      let match = matches[i];
+      let begin = Math.max(clearedUntilDivIdx, match.begin.divIdx);
       for (let n = begin, end = match.end.divIdx; n <= end; n++) {
-        const div = textDivs[n];
+        let div = textDivs[n];
         div.textContent = textContentItemsStr[n];
-        div.className = "";
+        div.className = '';
       }
       clearedUntilDivIdx = match.end.divIdx + 1;
     }
@@ -365,51 +335,49 @@ class TextLayerBuilder {
    * @private
    */
   _bindMouse() {
-    const div = this.textLayerDiv;
+    let div = this.textLayerDiv;
     let expandDivsTimer = null;
 
-    div.addEventListener("mousedown", evt => {
+    div.addEventListener('mousedown', (evt) => {
       if (this.enhanceTextSelection && this.textLayerRenderTask) {
         this.textLayerRenderTask.expandTextDivs(true);
-        if (
-          (typeof PDFJSDev === "undefined" || !PDFJSDev.test("MOZCENTRAL")) &&
-          expandDivsTimer
-        ) {
+        if ((typeof PDFJSDev === 'undefined' ||
+             !PDFJSDev.test('FIREFOX || MOZCENTRAL')) &&
+            expandDivsTimer) {
           clearTimeout(expandDivsTimer);
           expandDivsTimer = null;
         }
         return;
       }
 
-      const end = div.querySelector(".endOfContent");
+      let end = div.querySelector('.endOfContent');
       if (!end) {
         return;
       }
-      if (typeof PDFJSDev === "undefined" || !PDFJSDev.test("MOZCENTRAL")) {
+      if (typeof PDFJSDev === 'undefined' ||
+          !PDFJSDev.test('FIREFOX || MOZCENTRAL')) {
         // On non-Firefox browsers, the selection will feel better if the height
         // of the `endOfContent` div is adjusted to start at mouse click
         // location. This avoids flickering when the selection moves up.
         // However it does not work when selection is started on empty space.
         let adjustTop = evt.target !== div;
-        if (typeof PDFJSDev === "undefined" || PDFJSDev.test("GENERIC")) {
-          adjustTop =
-            adjustTop &&
-            window
-              .getComputedStyle(end)
-              .getPropertyValue("-moz-user-select") !== "none";
+        if (typeof PDFJSDev === 'undefined' || PDFJSDev.test('GENERIC')) {
+          adjustTop = adjustTop && window.getComputedStyle(end).
+            getPropertyValue('-moz-user-select') !== 'none';
         }
         if (adjustTop) {
-          const divBounds = div.getBoundingClientRect();
-          const r = Math.max(0, (evt.pageY - divBounds.top) / divBounds.height);
-          end.style.top = (r * 100).toFixed(2) + "%";
+          let divBounds = div.getBoundingClientRect();
+          let r = Math.max(0, (evt.pageY - divBounds.top) / divBounds.height);
+          end.style.top = (r * 100).toFixed(2) + '%';
         }
       }
-      end.classList.add("active");
+      end.classList.add('active');
     });
 
-    div.addEventListener("mouseup", () => {
+    div.addEventListener('mouseup', () => {
       if (this.enhanceTextSelection && this.textLayerRenderTask) {
-        if (typeof PDFJSDev === "undefined" || !PDFJSDev.test("MOZCENTRAL")) {
+        if (typeof PDFJSDev === 'undefined' ||
+            !PDFJSDev.test('FIREFOX || MOZCENTRAL')) {
           expandDivsTimer = setTimeout(() => {
             if (this.textLayerRenderTask) {
               this.textLayerRenderTask.expandTextDivs(false);
@@ -422,14 +390,15 @@ class TextLayerBuilder {
         return;
       }
 
-      const end = div.querySelector(".endOfContent");
+      let end = div.querySelector('.endOfContent');
       if (!end) {
         return;
       }
-      if (typeof PDFJSDev === "undefined" || !PDFJSDev.test("MOZCENTRAL")) {
-        end.style.top = "";
+      if (typeof PDFJSDev === 'undefined' ||
+          !PDFJSDev.test('FIREFOX || MOZCENTRAL')) {
+        end.style.top = '';
       }
-      end.classList.remove("active");
+      end.classList.remove('active');
     });
   }
 }
@@ -443,24 +412,20 @@ class DefaultTextLayerFactory {
    * @param {number} pageIndex
    * @param {PageViewport} viewport
    * @param {boolean} enhanceTextSelection
-   * @param {EventBus} eventBus
    * @returns {TextLayerBuilder}
    */
-  createTextLayerBuilder(
-    textLayerDiv,
-    pageIndex,
-    viewport,
-    enhanceTextSelection = false,
-    eventBus
-  ) {
+  createTextLayerBuilder(textLayerDiv, pageIndex, viewport,
+                         enhanceTextSelection = false) {
     return new TextLayerBuilder({
       textLayerDiv,
       pageIndex,
       viewport,
       enhanceTextSelection,
-      eventBus,
     });
   }
 }
 
-export { TextLayerBuilder, DefaultTextLayerFactory };
+export {
+  TextLayerBuilder,
+  DefaultTextLayerFactory,
+};

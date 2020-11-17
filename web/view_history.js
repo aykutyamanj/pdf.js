@@ -21,34 +21,33 @@ const DEFAULT_VIEW_HISTORY_CACHE_SIZE = 20;
  *
  * The way that the view parameters are stored depends on how PDF.js is built,
  * for 'gulp <flag>' the following cases exist:
- *  - MOZCENTRAL        - uses sessionStorage.
- *  - GENERIC or CHROME - uses localStorage, if it is available.
+ *  - FIREFOX or MOZCENTRAL - uses sessionStorage.
+ *  - GENERIC or CHROME     - uses localStorage, if it is available.
  */
 class ViewHistory {
   constructor(fingerprint, cacheSize = DEFAULT_VIEW_HISTORY_CACHE_SIZE) {
     this.fingerprint = fingerprint;
     this.cacheSize = cacheSize;
 
-    this._initializedPromise = this._readFromStorage().then(databaseStr => {
-      const database = JSON.parse(databaseStr || "{}");
-      let index = -1;
-      if (!Array.isArray(database.files)) {
+    this._initializedPromise = this._readFromStorage().then((databaseStr) => {
+      let database = JSON.parse(databaseStr || '{}');
+      if (!('files' in database)) {
         database.files = [];
       } else {
         while (database.files.length >= this.cacheSize) {
           database.files.shift();
         }
-
-        for (let i = 0, ii = database.files.length; i < ii; i++) {
-          const branch = database.files[i];
-          if (branch.fingerprint === this.fingerprint) {
-            index = i;
-            break;
-          }
+      }
+      let index = -1;
+      for (let i = 0, length = database.files.length; i < length; i++) {
+        let branch = database.files[i];
+        if (branch.fingerprint === this.fingerprint) {
+          index = i;
+          break;
         }
       }
       if (index === -1) {
-        index = database.files.push({ fingerprint: this.fingerprint }) - 1;
+        index = database.files.push({ fingerprint: this.fingerprint, }) - 1;
       }
       this.file = database.files[index];
       this.database = database;
@@ -56,20 +55,22 @@ class ViewHistory {
   }
 
   async _writeToStorage() {
-    const databaseStr = JSON.stringify(this.database);
+    let databaseStr = JSON.stringify(this.database);
 
-    if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) {
-      sessionStorage.setItem("pdfjs.history", databaseStr);
+    if (typeof PDFJSDev !== 'undefined' &&
+        PDFJSDev.test('FIREFOX || MOZCENTRAL')) {
+      sessionStorage.setItem('pdfjs.history', databaseStr);
       return;
     }
-    localStorage.setItem("pdfjs.history", databaseStr);
+    localStorage.setItem('pdfjs.history', databaseStr);
   }
 
   async _readFromStorage() {
-    if (typeof PDFJSDev !== "undefined" && PDFJSDev.test("MOZCENTRAL")) {
-      return sessionStorage.getItem("pdfjs.history");
+    if (typeof PDFJSDev !== 'undefined' &&
+        PDFJSDev.test('FIREFOX || MOZCENTRAL')) {
+      return sessionStorage.getItem('pdfjs.history');
     }
-    return localStorage.getItem("pdfjs.history");
+    return localStorage.getItem('pdfjs.history');
   }
 
   async set(name, val) {
@@ -80,7 +81,7 @@ class ViewHistory {
 
   async setMultiple(properties) {
     await this._initializedPromise;
-    for (const name in properties) {
+    for (let name in properties) {
       this.file[name] = properties[name];
     }
     return this._writeToStorage();
@@ -88,20 +89,22 @@ class ViewHistory {
 
   async get(name, defaultValue) {
     await this._initializedPromise;
-    const val = this.file[name];
+    let val = this.file[name];
     return val !== undefined ? val : defaultValue;
   }
 
   async getMultiple(properties) {
     await this._initializedPromise;
-    const values = Object.create(null);
+    let values = Object.create(null);
 
-    for (const name in properties) {
-      const val = this.file[name];
+    for (let name in properties) {
+      let val = this.file[name];
       values[name] = val !== undefined ? val : properties[name];
     }
     return values;
   }
 }
 
-export { ViewHistory };
+export {
+  ViewHistory,
+};
